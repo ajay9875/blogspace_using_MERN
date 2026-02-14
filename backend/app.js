@@ -42,6 +42,12 @@ app.use(cookieParser());
 // API routes
 app.use('/api/auth', authRoutes);
 
+// Add this line with other route imports
+const blogRoutes = require('./src/routes/blogRoutes');  // CORRECT PATH
+
+// Add this line with other route uses
+app.use('/api/blogs', blogRoutes);
+
 // Health check
 app.get('/health', (req, res) => {
     res.json({ status: 'OK', timestamp: new Date().toISOString() });
