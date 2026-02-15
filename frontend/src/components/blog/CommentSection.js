@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useBlog } from '../../context/BlogContext';
-import { Link } from 'react-router-dom';  // Add this line
+import { Link } from 'react-router-dom';
 
 const CommentSection = ({ blogId }) => {
   const { user } = useAuth();
-  const { createComment, updateComment, deleteComment, likeComment } = useBlog();
+  // Import currentBlog and fetchBlog to handle updates
+  const { currentBlog, fetchBlog, createComment, updateComment, deleteComment, likeComment } = useBlog();
+  
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState('');
   const [editingComment, setEditingComment] = useState(null);
@@ -14,17 +16,17 @@ const CommentSection = ({ blogId }) => {
   const [replyContent, setReplyContent] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // FIX: Sync local comments state with the Global Blog Context
+  // Whenever currentBlog updates (after a like or new comment), this runs.
   useEffect(() => {
-    fetchComments();
-  }, [blogId]);
-
-  const fetchComments = async () => {
-    try {
-      // Comments are included in blog fetch
-    } catch (error) {
-      console.error('Failed to fetch comments:', error);
-    }
-  };
+      if (currentBlog && currentBlog.comments) {
+        // FIX: Only keep comments that do NOT have a parent (top-level only)
+        const topLevelComments = currentBlog.comments.filter(
+          comment => comment.parentComment === null
+        );
+        setComments(topLevelComments);
+      }
+    }, [currentBlog]);
 
   const handleSubmitComment = async (e) => {
     e.preventDefault();
@@ -37,8 +39,8 @@ const CommentSection = ({ blogId }) => {
 
     if (result.success) {
       setNewComment('');
-      // Refresh blog to get new comment
-      window.location.reload();
+      // FIX: Refetch data instead of reloading page
+      await fetchBlog(blogId); 
     }
     setLoading(false);
   };
@@ -55,7 +57,7 @@ const CommentSection = ({ blogId }) => {
     if (result.success) {
       setReplyTo(null);
       setReplyContent('');
-      window.location.reload();
+      await fetchBlog(blogId); // Refresh data
     }
     setLoading(false);
   };
@@ -69,7 +71,7 @@ const CommentSection = ({ blogId }) => {
     if (result.success) {
       setEditingComment(null);
       setEditContent('');
-      window.location.reload();
+      await fetchBlog(blogId); // Refresh data
     }
     setLoading(false);
   };
@@ -81,7 +83,7 @@ const CommentSection = ({ blogId }) => {
     const result = await deleteComment(blogId, commentId);
 
     if (result.success) {
-      window.location.reload();
+      await fetchBlog(blogId); // Refresh data
     }
     setLoading(false);
   };
@@ -91,7 +93,7 @@ const CommentSection = ({ blogId }) => {
 
     try {
       await likeComment(blogId, commentId);
-      window.location.reload();
+      await fetchBlog(blogId); // Refresh data silently
     } catch (error) {
       console.error('Failed to like comment:', error);
     }
@@ -107,21 +109,28 @@ const CommentSection = ({ blogId }) => {
     });
   };
 
+  // Helper to check if current user liked the comment
+  const hasUserLiked = (comment) => {
+    if (!user || !comment.likes) return false;
+    return comment.likes.includes(user._id);
+  };
+
   const renderComment = (comment, isReply = false) => (
     <div key={comment._id} className={`${isReply ? 'ml-12 mt-4' : 'border-b border-gray-200 pb-6 mb-6'}`}>
       <div className="flex items-start space-x-3">
         <div className="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0">
           <span className="text-indigo-800 font-semibold text-sm">
-            {comment.author?.name?.charAt(0)}
+            {comment.author?.name?.charAt(0) || 'U'}
           </span>
         </div>
         
         <div className="flex-1">
           <div className="flex items-center justify-between">
             <div>
-              <span className="font-medium text-gray-900">{comment.author?.name}</span>
+              <span className="font-medium text-gray-900">{comment.author?.name || 'Unknown'}</span>
               <span className="text-sm text-gray-500 ml-2">{formatDate(comment.createdAt)}</span>
-              {comment.isEdited && (
+              {/* Check if createdAt matches updatedAt to determine if edited, or rely on a flag */}
+              {comment.createdAt !== comment.updatedAt && (
                 <span className="text-xs text-gray-400 ml-2">(edited)</span>
               )}
             </div>
@@ -182,15 +191,16 @@ const CommentSection = ({ blogId }) => {
             <button
               onClick={() => handleLikeComment(comment._id)}
               className={`flex items-center space-x-1 text-sm transition-colors ${
-                comment.likes?.includes(user?._id) ? 'text-red-600' : 'text-gray-500 hover:text-red-600'
+                hasUserLiked(comment) ? 'text-red-600' : 'text-gray-500 hover:text-red-600'
               }`}
             >
-              <svg className="h-4 w-4" fill={comment.likes?.includes(user?._id) ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="h-4 w-4" fill={hasUserLiked(comment) ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
               </svg>
-              <span>{comment.likesCount || 0}</span>
+              <span>{comment.likes?.length || 0}</span>
             </button>
             
+            {/* Logic for Replies: Only depth 0 can be replied to (optional rule) */}
             {!isReply && (
               <button
                 onClick={() => setReplyTo(replyTo === comment._id ? null : comment._id)}
@@ -231,6 +241,7 @@ const CommentSection = ({ blogId }) => {
             </div>
           )}
           
+          {/* Recursively render replies if your backend nests them */}
           {comment.replies && comment.replies.length > 0 && (
             <div className="mt-4">
               {comment.replies.map(reply => renderComment(reply, true))}
@@ -274,7 +285,7 @@ const CommentSection = ({ blogId }) => {
       )}
       
       <div className="space-y-6">
-        {comments.length > 0 ? (
+        {comments && comments.length > 0 ? (
           comments.map(comment => renderComment(comment))
         ) : (
           <p className="text-center text-gray-500 py-8">

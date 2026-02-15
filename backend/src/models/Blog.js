@@ -57,7 +57,10 @@ const blogSchema = new mongoose.Schema({
         type: Date
     }
 }, {
-    timestamps: true
+    timestamps: true,
+    // ADD THESE TWO LINES:
+    toJSON: { virtuals: true }, 
+    toObject: { virtuals: true } 
 });
 
 // Index for search functionality

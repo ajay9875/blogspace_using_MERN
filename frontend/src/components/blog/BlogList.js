@@ -1,15 +1,20 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
+import Fuse from 'fuse.js'; // Import Fuse
 import { useBlog } from '../../context/BlogContext';
 import BlogCard from './BlogCard';
-import SearchBar from './SearchBar';
+import SearchBar from './SearchBar'; // Import the new SearchBar
 import Pagination from './Pagination';
 
 const BlogList = () => {
   const { blogs, loading, error, pagination, fetchBlogs, likeBlog } = useBlog();
+
+  // Local state for the fuzzy search term
+  const [fuzzyQuery, setFuzzyQuery] = useState('');
+
   const [filters, setFilters] = useState({
     page: 1,
     limit: 10,
-    search: '',
+    search: '', // We keep this empty to fetch "all" (or current page) from server
     category: '',
     sortBy: 'createdAt',
     sortOrder: 'desc'
@@ -19,12 +24,28 @@ const BlogList = () => {
     fetchBlogs(filters);
   }, [filters]);
 
+  // 1. Handle Search: Updates local fuzzy state instead of refetching immediately
   const handleSearch = (searchTerm) => {
-    setFilters({ ...filters, search: searchTerm, page: 1 });
+    setFuzzyQuery(searchTerm); // Optional: keep for UI, but server logic matters more
+
+    setFilters(prev => ({
+      ...prev,
+      page: 1,           // Always reset to page 1 for new results
+      category: '',      // FIX: Reset category so we search GLOBALLY, not inside the empty category
+      search: searchTerm // Send the query to the server
+    }));
   };
 
+  // REPLACE your existing handleCategoryChange with this:
   const handleCategoryChange = (category) => {
-    setFilters({ ...filters, category, page: 1 });
+    setFuzzyQuery(''); // Clear local search text
+
+    setFilters(prev => ({
+      ...prev,
+      category,
+      search: '', // FIX: Clear the server search param so we see all posts in this category
+      page: 1
+    }));
   };
 
   const handlePageChange = (page) => {
@@ -39,23 +60,37 @@ const BlogList = () => {
   const handleLike = async (blogId) => {
     try {
       await likeBlog(blogId);
-      // Refresh blogs to show updated like count
       fetchBlogs(filters);
     } catch (error) {
       console.error('Failed to like blog:', error);
     }
   };
 
+  // --- FUZZY LOGIC IMPLEMENTATION ---
+
+  // 2. Configure Fuse options
+  const fuseOptions = {
+    keys: ['title', 'category', 'author.name', 'tags'], // Fields to search in
+    threshold: 0.4, // Sensitivity: 0.0 is exact match, 1.0 is match anything
+    includeScore: true
+  };
+
+  // 3. Create Fuse instance (memoized for performance)
+  const fuse = useMemo(() => new Fuse(blogs, fuseOptions), [blogs]);
+
+  // 4. Calculate filtered results
+  // REPLACE your existing displayedBlogs with this:
+  const displayedBlogs = useMemo(() => {
+    // Since the server now handles the 'search' filter, 
+    // we just return the blogs directly.
+    return blogs;
+  }, [blogs]);
+
+  // ----------------------------------
+
   const categories = [
-    'All',
-    'Technology',
-    'Lifestyle',
-    'Travel',
-    'Food',
-    'Health',
-    'Business',
-    'Education',
-    'Other'
+    'All', 'Technology', 'Lifestyle', 'Travel', 'Food',
+    'Health', 'Business', 'Education', 'Other'
   ];
 
   if (loading && blogs.length === 0) {
@@ -70,10 +105,12 @@ const BlogList = () => {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-4">Blog Posts</h1>
-        
+
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+
+          {/* Use the new SearchBar */}
           <SearchBar onSearch={handleSearch} />
-          
+
           <div className="flex gap-4">
             <select
               value={filters.category}
@@ -86,7 +123,7 @@ const BlogList = () => {
                 </option>
               ))}
             </select>
-            
+
             <select
               value={filters.sortBy}
               onChange={handleSortChange}
@@ -106,26 +143,32 @@ const BlogList = () => {
         </div>
       )}
 
-      {blogs.length === 0 ? (
+      {displayedBlogs.length === 0 ? (
         <div className="text-center py-12">
-          <p className="text-gray-500 text-lg">No blog posts found.</p>
+          <p className="text-gray-500 text-lg">
+            {fuzzyQuery ? `No matches found for "${fuzzyQuery}"` : "No blog posts found."}
+          </p>
         </div>
       ) : (
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {blogs.map(blog => (
-              <BlogCard 
-                key={blog._id} 
-                blog={blog} 
+            {/* Render displayedBlogs (filtered) instead of original blogs */}
+            {displayedBlogs.map(blog => (
+              <BlogCard
+                key={blog._id}
+                blog={blog}
                 onLike={handleLike}
               />
             ))}
           </div>
-          
-          <Pagination 
-            pagination={pagination}
-            onPageChange={handlePageChange}
-          />
+
+          {/* Hide pagination if searching locally, as page numbers won't match filtered results */}
+          {!fuzzyQuery && (
+            <Pagination
+              pagination={pagination}
+              onPageChange={handlePageChange}
+            />
+          )}
         </>
       )}
     </div>

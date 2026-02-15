@@ -52,6 +52,7 @@ class BlogService {
         // Execute query
         const blogs = await Blog.find(filter)
             .populate('author', 'name email')
+            .populate('comments') // Add this line to fetch comment data
             .sort(sort)
             .skip(skip)
             .limit(parseInt(limit));

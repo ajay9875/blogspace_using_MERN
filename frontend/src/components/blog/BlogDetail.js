@@ -22,22 +22,22 @@ const BlogDetail = () => {
       // Check if current user is the author
       setIsLiked(currentBlog.likes?.includes(user._id));
       setLikesCount(currentBlog.likesCount || 0);
-      
+
       // Debug logs to see what's happening
       console.log('===== AUTHOR CHECK =====');
       console.log('Current User ID:', user._id);
       console.log('Blog Author Object:', currentBlog.author);
       console.log('Blog Author ID:', currentBlog.author?._id || currentBlog.author);
-      
+
       // Fix: Handle both populated author object and plain author ID
       const authorId = currentBlog.author?._id || currentBlog.author;
       const userId = user._id;
-      
+
       // Convert both to strings for comparison
       const isUserAuthor = authorId?.toString() === userId?.toString();
       console.log('Is Author?', isUserAuthor);
       console.log('========================');
-      
+
       setIsAuthor(isUserAuthor);
     }
   }, [currentBlog, user]);
@@ -107,7 +107,7 @@ const BlogDetail = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="text-center">
           <p className="text-red-600 mb-4">{error || 'Blog not found'}</p>
-          <Link 
+          <Link
             to="/blogs"
             className="text-indigo-600 hover:text-indigo-800"
           >
@@ -120,7 +120,7 @@ const BlogDetail = () => {
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <Link 
+      <Link
         to="/blogs"
         className="inline-flex items-center text-indigo-600 hover:text-indigo-800 mb-6"
       >
@@ -128,8 +128,8 @@ const BlogDetail = () => {
       </Link>
 
       <article className="bg-white rounded-lg shadow-lg overflow-hidden">
-        <img 
-          src={currentBlog.featuredImage || 'https://via.placeholder.com/800x400?text=Blog+Post'} 
+        <img
+          src={currentBlog.featuredImage || 'https://via.placeholder.com/800x400?text=Blog+Post'}
           alt={currentBlog.title}
           className="w-full h-96 object-cover"
         />
@@ -189,9 +189,8 @@ const BlogDetail = () => {
             <div className="flex items-center space-x-6">
               <button
                 onClick={handleLike}
-                className={`flex items-center space-x-2 transition-colors ${
-                  isLiked ? 'text-red-600' : 'text-gray-500 hover:text-red-600'
-                }`}
+                className={`flex items-center space-x-2 transition-colors ${isLiked ? 'text-red-600' : 'text-gray-500 hover:text-red-600'
+                  }`}
               >
                 <svg className="h-6 w-6" fill={isLiked ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
@@ -212,7 +211,7 @@ const BlogDetail = () => {
           {currentBlog.tags && currentBlog.tags.length > 0 && (
             <div className="mb-6 flex flex-wrap gap-2">
               {currentBlog.tags.map((tag, index) => (
-                <span 
+                <span
                   key={index}
                   className="px-3 py-1 bg-gray-100 text-gray-600 text-sm rounded-full"
                 >

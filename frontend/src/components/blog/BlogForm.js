@@ -88,7 +88,7 @@ const BlogForm = () => {
     if (!validateForm()) return;
 
     setLoading(true);
-    
+
     const blogData = {
       ...formData,
       tags: formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag)
