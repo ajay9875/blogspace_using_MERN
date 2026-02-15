@@ -54,14 +54,20 @@ A high-performance Full-Stack application featuring a secure JWT-based authentic
    npm run install-all
 
 ## Environment Configuration (backend/.env)
+
+```env
 MONGODB_URI=your_mongodb_uri
 JWT_SECRET=your_access_secret
 JWT_REFRESH_SECRET=your_refresh_secret
 PORT=5000
 CLIENT_URL=http://localhost:3000
+```
 
 ## Environment Configuration (frontend/.env)
+
+```env
 REACT_APP_API_URL=http://localhost:5000/api
+```
 
 ## Running the Application
 ```bash
